@@ -25,8 +25,9 @@ class Requirements(object) :
     def __init__(self) :
         self._caller = ''
         self._requirements = []
+        self._locations = []
+        self._environment = Environment()
         self._missing_distribs = []
-        self._catalog = ''
         
         stack = list(
             filter(
@@ -52,13 +53,26 @@ class Requirements(object) :
         except FileNotFoundError as e :
             pass
 
-    @property
-    def catalog(self) :
-        return self._catalog
+        self.search()
 
-    @catalog.setter
-    def catalog(self, catalog) :
-        self._catalog = catalog
+    def __getitem__(self, name) :
+        return self.environment[name]
+
+    @property
+    def environment(self) :
+        return self._environment
+
+    @property
+    def locations(self) :
+        return self._locations
+
+    @property
+    def requirements(self) :
+        return self._requirements
+
+    @property
+    def missing_distribs(self) :
+        return self._missing_distribs
             
     @property
     def caller(self) :
@@ -68,34 +82,36 @@ class Requirements(object) :
     def req_file(self) :
         return self._req_file
 
-    @property
-    def requirements(self) :
-        return self._requirements
-
-    @property
-    def missing_distribs(self) :
-        return self._missing_distribs
-
-    def add_requirement(self, requirement) :
+    def add(self, requirement) :
         self._requirements.append(Requirement.parse(requirement))
+        self.search()
+
+    def add_location(self, location) :
+        self._locations.append(location)
+        self.search()
+
+    def search(self) :
+        places = []
+        for r in self.requirements :
+            for l in self.locations :
+                places.append(l)
+                places.append(l + '/' + r.name)
+                
+        return self.environment.scan(places)
 
     def satisfy(self) :
-        environment = Environment([])
         self._missing_distribs = []
+        self.search()
 
         for requirement in self.requirements :
             try :
                 # distrib disponible directement ?
                 distrib = get_distribution(requirement)
-                environment.add(distrib)
+                self.environment.add(distrib)
 
             except DistributionNotFound as e :
-                # meilleur candidat pour cette distrib aux emplacements suivants
-                environment.scan([
-                    os.path.dirname(self.caller) + '/eggs',
-                    self.catalog + '/' + requirement.name
-                ])
-                distrib = environment.best_match(
+                # meilleur candidat pour cette distrib aux emplacements désignés
+                distrib = self.environment.best_match(
                     requirement,
                     working_set
                 )
