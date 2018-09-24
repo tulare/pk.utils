@@ -18,7 +18,7 @@ from pkg_resources import (
     working_set
 )
 
-from . import dialogs
+from .dialogs import Dialogs
 
 class Requirements(object) :
 
@@ -121,7 +121,7 @@ class Requirements(object) :
                     self._missing_distribs.append(requirement)
 
         if len(self.missing_distribs) > 0 :
-            dialogs.error(
+            Dialogs.error(
                 list(map(str, self.missing_distribs)),
                 'Missing distributions'
             )
